@@ -4,14 +4,18 @@ FROM python:3.9-slim AS requirements-stage
 # Set working directory
 WORKDIR /tmp
 
-# Install Poetry
-RUN pip install poetry
+# Install necessary system libraries
+RUN apt-get update && apt-get install -y gcc libffi-dev libssl-dev && apt-get clean
 
-# Copy pyproject.toml and poetry.lock to install dependencies
+# Install Poetry
+RUN pip install "poetry==1.5.1"
+
+# Copy dependency files
 COPY ./pyproject.toml /tmp/pyproject.toml
 COPY ./poetry.lock /tmp/poetry.lock
 
-# Export requirements to a requirements.txt file
+# Install dependencies and export requirements
+RUN poetry install --no-dev
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 # Stage 2: Application runtime
@@ -20,7 +24,7 @@ FROM python:3.11-slim-bookworm
 # Set working directory
 WORKDIR /app
 
-# Copy exported requirements from the previous stage
+# Copy exported requirements from the first stage
 COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
 
 # Install Python dependencies
