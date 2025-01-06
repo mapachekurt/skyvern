@@ -1,29 +1,53 @@
-FROM python:3.9-slim  # Replace with the required Python version
+# Stage 1: Build dependencies
+FROM python:3.9-slim AS requirements-stage
 
-
+# Set working directory
 WORKDIR /tmp
+
+# Install Poetry
 RUN pip install poetry
+
+# Copy pyproject.toml and poetry.lock to install dependencies
 COPY ./pyproject.toml /tmp/pyproject.toml
 COPY ./poetry.lock /tmp/poetry.lock
+
+# Export requirements to a requirements.txt file
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
+# Stage 2: Application runtime
 FROM python:3.11-slim-bookworm
-WORKDIR /app
-COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
-RUN playwright install-deps
-RUN playwright install
-RUN apt-get install -y xauth x11-apps netpbm && apt-get clean
 
+# Set working directory
+WORKDIR /app
+
+# Copy exported requirements from the previous stage
+COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Install Playwright dependencies
+RUN playwright install-deps && \
+    playwright install
+
+# Install additional system utilities
+RUN apt-get update && apt-get install -y \
+    xauth x11-apps netpbm && \
+    apt-get clean
+
+# Copy application files
 COPY . /app
 
+# Set environment variables
 ENV PYTHONPATH="/app:$PYTHONPATH"
 ENV VIDEO_PATH=/data/videos
 ENV HAR_PATH=/data/har
 ENV LOG_PATH=/data/log
 ENV ARTIFACT_STORAGE_PATH=/data/artifacts
 
+# Copy and make the entrypoint script executable
 COPY ./entrypoint-skyvern.sh /app/entrypoint-skyvern.sh
 RUN chmod +x /app/entrypoint-skyvern.sh
 
-CMD [ "/bin/bash", "/app/entrypoint-skyvern.sh" ]
+# Set the default command to run the entrypoint script
+CMD ["/bin/bash", "/app/entrypoint-skyvern.sh"]
