@@ -1,5 +1,5 @@
-# Stage 1: Build dependencies
-FROM python:3.9-slim AS requirements-stage
+# Use Python 3.11 for the entire build process
+FROM python:3.11-slim-bookworm AS requirements-stage
 
 # Set working directory
 WORKDIR /tmp
