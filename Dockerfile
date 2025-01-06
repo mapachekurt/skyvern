@@ -1,4 +1,5 @@
-FROM python:3.11 as requirements-stage
+FROM python:3.9-slim  # Replace with the required Python version
+
 
 WORKDIR /tmp
 RUN pip install poetry
